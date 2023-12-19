@@ -2,7 +2,6 @@
 #include "Character.h"
 
 class Aim;
-class StateManager;
 class PlayerCommand;
 
 class Player : public Character
@@ -14,7 +13,6 @@ class Player : public Character
     XMFLOAT3 playerMovement_;   //¡‚ÌˆÚ“®—Ê(Key‚Ìî•ñ‚¾‚¯
 
     Aim* pAim_;
-    StateManager* pStateManager_;
     PlayerCommand* pCommand_;
 
 public:

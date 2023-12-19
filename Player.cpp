@@ -3,10 +3,6 @@
 #include "Engine/Input.h"
 #include "Aim.h"
 #include "PlayerCommand.h"
-
-#include "Engine/BoxCollider.h"
-#include "Engine/SphereCollider.h"
-#include "CollisionMap.h"
 #include "Engine/Text.h"
 
 namespace {
@@ -26,16 +22,13 @@ namespace {
 }
 
 Player::Player(GameObject* parent)
-    : Character(parent), hModel_{-1, -1}, pAim_(nullptr), playerMovement_{0,0,0}, pStateManager_(nullptr),
-    pCommand_(nullptr)
-    , moveSpeed_(0.0f), rotateRatio_(0.0f)
+    : Character(parent), hModel_{-1, -1}, pAim_(nullptr), playerMovement_{0,0,0}, pCommand_(nullptr), moveSpeed_(0.0f), rotateRatio_(0.0f)
 {
     objectName_ = "Player";
 }
 
 Player::~Player()
 {
-    delete pStateManager_;
     delete pCommand_;
 }
 
@@ -79,14 +72,6 @@ void Player::Update()
     if (Input::IsKeyDown(DIK_LEFTARROW)) transform_.position_.y = 0.0f;
     if (Input::IsKeyDown(DIK_RIGHTARROW)) transform_.position_.y += 10.0f;
     if (Input::IsKey(DIK_H)) ApplyDamage(1);
-
-    if (Input::IsKeyDown(DIK_Y)) isCollider = !isCollider;
-    if (isCollider) {
-        CollisionMap* map = (CollisionMap*)FindObject("CollisionMap");
-    //    map->MapDataVsSphere(collid, prePos);
-        map->CalcMapWall(transform_.position_, moveSpeed_);
-    
-    }
 
     XMVECTOR vec = XMLoadFloat3(&transform_.position_) - XMLoadFloat3(&prePos);
     vec *= 10.0f;
