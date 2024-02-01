@@ -83,6 +83,6 @@ void AstarMoveAction::Update()
 
 void AstarMoveAction::SetTarget(XMFLOAT3 target)
 {
-	targetList_ = GameManager::GetNavigationAI()->NaviDiagonal(target, pCharacter_->GetPosition());
+	targetList_ = GameManager::GetNavigationAI()->Navi(target, pCharacter_->GetPosition());
 	isOutEndTarget_ = false;
 }
