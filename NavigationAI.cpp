@@ -9,7 +9,43 @@ namespace {
 	const int DIRY[] = { -1,  0, +1,  0 };
 }
 
-void PathSmoothing(std::vector<XMFLOAT3>& path);
+bool NavigationAI::IsInWall(int x, int z)
+{
+	if (mapData_[z][x] == Stage::MAP::WALL) return true;
+	return false;
+}
+
+bool NavigationAI::IsOutRange(int x, int z)
+{
+	if (x < 0 || x >= stageWidth || z < 0 || z >= stageHeight) return true;
+	return false;
+}
+
+std::vector<XMFLOAT3> NavigationAI::CalcExtractPath(int x, int z, std::vector<std::vector<int>> pX, std::vector<std::vector<int>> pZ)
+{
+	//パスを再構築
+	std::vector<XMFLOAT3> path;
+	while (x != -1 && z != -1) {
+		path.push_back(XMFLOAT3(static_cast<float>(x), 0.0f, static_cast<float>(z)));
+		int tempX = pX[x][z];
+		int tempY = pZ[x][z];
+		x = tempX;
+		z = tempY;
+	}
+
+	//一番後列のデータはstartPosだから削除
+	if (path.size() >= 2) {
+		path.pop_back();
+		PathSmoothing(path);
+		return path;
+	}
+	//パスが短すぎる場合は何も入ってないやつ返す
+	else {
+		path.clear();
+		return path;
+	}
+}
+
 
 NavigationAI::NavigationAI(Stage* s)
 {
@@ -27,18 +63,7 @@ std::vector<XMFLOAT3> NavigationAI::Navi(XMFLOAT3 target, XMFLOAT3 pos)
 	int targetX = static_cast<int>(target.x / floarSize);
 	int targetZ = static_cast<int>(target.z / floarSize);
 
-	//壁に埋まってしまったねぇ
-	//startが範囲外・壁の場合
-	if (startX < 0 || startX >= stageWidth || startZ < 0 || startZ >= stageHeight ||
-		mapData_[startZ][startX] == Stage::MAP::WALL)
-	{
-		std::vector<XMFLOAT3> none;
-		return none;
-	}
-
-	//targetが範囲外・壁の場合
-	if (targetX < 0 || targetX >= stageWidth || targetZ < 0 || targetZ >= stageHeight ||
-		mapData_[targetZ][targetX] == Stage::MAP::WALL)
+	if (IsOutRange(startX, startZ) || IsOutRange(targetX, targetZ) || IsInWall(startX, startZ) || IsInWall(targetX, targetZ))
 	{
 		std::vector<XMFLOAT3> none;
 		return none;
@@ -67,70 +92,42 @@ std::vector<XMFLOAT3> NavigationAI::Navi(XMFLOAT3 target, XMFLOAT3 pos)
 		int x = current.x;
 		int z = current.z;
 
-		// 目標に到達したか確認
-		if (x == targetX && z == targetZ) {
-			// パスを再構築
-			std::vector<XMFLOAT3> path;
-			while (x != -1 && z != -1) {
-				path.push_back(XMFLOAT3(static_cast<float>(x), 0.0f, static_cast<float>(z)));
-				int tempX = parentX[x][z];
-				int tempY = parentZ[x][z];
-				x = tempX;
-				z = tempY;
-			}
-
-			// 一番後列のデータはstartPosだから削除
-			if (path.size() >= 2) {
-				path.pop_back();
-
-				PathSmoothing(path);
-				return path;
-			}
-			else {
-				// パスが短すぎる場合は目標自体を返す
-				path.clear();
-				return path;
-			}
-		}
+		//目標に到達したか確認して到達したなら計算して結果出す
+		if (x == targetX && z == targetZ) 
+			return CalcExtractPath(x, z, parentX, parentZ);
 
 		closedList[x][z] = true;
 
-		// 隣接するノードを生成
+		//隣接するノードを生成
 		for (int i = -1; i <= 1; ++i) {
 			for (int j = -1; j <= 1; ++j) {
 				int newX = x + i;
 				int newZ = z + j;
 
-				// 隣接ノードが範囲内かつ通行可能か確認
-				if (newX >= 0 && newX < stageWidth && newZ >= 0 && newZ < stageHeight) {
-					if (!closedList[newX][newZ] && mapData_[newZ][newX] == Stage::MAP::FLOAR) {
+				//隣接ノードが範囲内かつ通行可能か確認
+				if (!IsOutRange(newX, newZ) && !closedList[newX][newZ] && !IsInWall(newX, newZ)){
 
-						//斜め移動の場合は条件をプラス
-						if (abs(i) + abs(j) >= 2) {
-							if (mapData_[z + j][x] == Stage::MAP::WALL || mapData_[z][x + i] == Stage::MAP::WALL) {
-								continue;
-							}
-						}
+					//斜め移動の場合は条件をプラスして良ければ計算する
+					if (abs(i) + abs(j) >= 2 && (IsInWall(x, z+j) || IsInWall(x+i, z)) )
+						continue;
 
-						//スコアがallCostより小さければpushする
-						//斜め移動はプラス２
-						int cellCost = value[x][z] + abs(i) + abs(j);
-						int dxValue = targetX - newX;
-						int dzValue = targetZ - newZ;
-						if (dxValue >= dzValue) cellCost += dxValue;
-						else cellCost += dzValue;
+					//スコアがallCostより小さければpushする
+					int cellCost = value[x][z] + abs(i) + abs(j);
+					int dxValue = targetX - newX;
+					int dzValue = targetZ - newZ;
+					if (dxValue >= dzValue) cellCost += dxValue;
+					else cellCost += dzValue;
 
-						// 新しい経路が現在の最良経路より短いか確認
-						if (cellCost < allCost[newX][newZ]) {
-							// 隣接ノードの情報を更新
-							value[newX][newZ] = value[x][z] + mapCost[newX][newZ];
-							parentX[newX][newZ] = x;
-							parentZ[newX][newZ] = z;
-							allCost[newX][newZ] = cellCost;
+					// 新しい経路が現在の最良経路より短いか確認
+					if (cellCost < allCost[newX][newZ]) {
+						// 隣接ノードの情報を更新
+						value[newX][newZ] = value[x][z] + mapCost[newX][newZ];
+						parentX[newX][newZ] = x;
+						parentZ[newX][newZ] = z;
+						allCost[newX][newZ] = cellCost;
 
-							// 隣接ノードをopenListに追加
-							openList.push(Node(newX, newZ, cellCost));
-						}
+						// 隣接ノードをopenListに追加
+						openList.push(Node(newX, newZ, cellCost));
 					}
 				}
 			}
@@ -141,7 +138,7 @@ std::vector<XMFLOAT3> NavigationAI::Navi(XMFLOAT3 target, XMFLOAT3 pos)
 	return none;
 }
 
-void PathSmoothing(std::vector<XMFLOAT3>& path) {
+void NavigationAI::PathSmoothing(std::vector<XMFLOAT3>& path) {
 	const std::vector<XMFLOAT3> prePath = path;
 	const float alpha = 0.5f;			// 大きいほど、元のPathに似ているPathができる。　　　　 大きいほど処理が速い
 	const float beta = 0.3f;			// 大きいほど、隣接する点間での滑らかさが向上する。　   大きいほど処理が遅い

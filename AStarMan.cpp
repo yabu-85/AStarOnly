@@ -44,7 +44,8 @@ void AStarMan::Update()
 {
 	if (pAstarMoveAction_->IsInRange() && rand() % randTime == 0) {
 		Player* pPlayer = (Player*)FindObject("Player");
-		pAstarMoveAction_->SetTarget(pPlayer->GetPosition());
+		XMFLOAT3 pPos = pPlayer->GetPosition();
+		pAstarMoveAction_->SetTarget(pPos);
 
 //		Stage* pStage = (Stage*)FindObject("Stage");
 //		pAstarMoveAction_->SetTarget(pStage->GetRandomFloarPosition());

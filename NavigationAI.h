@@ -16,6 +16,11 @@ class NavigationAI
 		Node(int x, int z, int cost) : x(x), z(z), cost(cost) {}
 	};
 
+	bool IsInWall(int x, int z);
+	bool IsOutRange(int x, int z);
+	std::vector<XMFLOAT3> CalcExtractPath(int x, int z, std::vector<std::vector<int>> pX, std::vector<std::vector<int>> pZ);
+	void PathSmoothing(std::vector<XMFLOAT3>& path);
+
 public:
 	NavigationAI(Stage* s);
 	std::vector<XMFLOAT3> Navi(XMFLOAT3 target, XMFLOAT3 pos);
